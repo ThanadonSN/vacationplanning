@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>นัดวันไปเที่ยว</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mitr:wght@400;500;600&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap">
+<style>
+/* Layout: boarding-pass header, then calendar (left) + live results (right); stacks on phones */
+:root{
+  --bg:#EEF3F6; --surface:#FFFFFF; --ink:#13242F; --muted:#5B6E7A; --line:#D5E0E7;
+  --accent:#0C7A78; --accent-ink:#FFFFFF; --accent-soft:#D6EEEC;
+  --sun:#F0A92E; --sun-soft:#FCEBCB; --danger:#B4423A;
+  --heat:12,122,120;
+  --display:"Mitr","IBM Plex Sans Thai",system-ui,sans-serif;
+  --body:"IBM Plex Sans Thai","Noto Sans Thai",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1A21; --surface:#15252F; --ink:#E4EEF2; --muted:#93A8B4; --line:#25394500;
+  --line:#26404D; --accent:#3FB8B2; --accent-ink:#06201F; --accent-soft:#163C3D;
+  --sun:#F4B850; --sun-soft:#3A2E17; --danger:#E58A80; --heat:63,184,178; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1A21; --surface:#15252F; --ink:#E4EEF2; --muted:#93A8B4;
+  --line:#26404D; --accent:#3FB8B2; --accent-ink:#06201F; --accent-soft:#163C3D;
+  --sun:#F4B850; --sun-soft:#3A2E17; --danger:#E58A80; --heat:63,184,178; color-scheme:dark}
+*{box-sizing:border-box}body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.6}
+.wrap{max-width:1080px;margin:0 auto;padding-block:28px 48px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:20px}
+h1,h2,h3{font-family:var(--display);font-weight:500;margin:0;text-wrap:balance}
+header.pass{background:var(--accent);color:var(--accent-ink);border-radius:18px;padding:22px 24px;
+  display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;position:relative;overflow:hidden}
+header.pass::after{content:"";position:absolute;right:150px;top:-10px;bottom:-10px;border-left:2px dashed color-mix(in srgb,var(--accent-ink) 35%,transparent)}
+header.pass h1{font-size:clamp(26px,5vw,36px);line-height:1.2}
+header.pass p{margin:4px 0 0;opacity:.9}
+.stub{text-align:right;min-width:110px;position:relative;z-index:1}
+.stub .k{font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.8}
+.stub .v{font-family:var(--display);font-size:30px;line-height:1.1;font-variant-numeric:tabular-nums}
+@media (max-width:520px){header.pass::after{display:none}.stub{text-align:left}}
+.notice{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:12px 14px;color:var(--muted)}
+.notice.warn{border-color:var(--sun);background:var(--sun-soft);color:var(--ink)}
+.grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.step{display:flex;flex-direction:column;gap:8px}
+.step h2{font-size:18px;display:flex;gap:10px;align-items:center}
+.step h2 .n{width:26px;height:26px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:inline-grid;place-items:center;font-size:14px}
+.hint{color:var(--muted);font-size:13px;margin:0}
+input[type=text]{width:100%;font:inherit;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+input[type=text]:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;padding:3px 10px}
+.chip{cursor:pointer}.chip:hover{border-color:var(--accent)}.chip.me{border-color:var(--accent);color:var(--accent)}
+.calhead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.calhead h3{font-size:18px}
+.iconbtn{font:inherit;font-size:20px;line-height:1;width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.iconbtn:disabled{opacity:.35;cursor:default}
+.dow,.days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.dow span{text-align:center;font-size:12px;color:var(--muted);letter-spacing:.04em}
+.day{position:relative;aspect-ratio:1/1;max-width:100%;border-radius:10px;border:1px solid var(--line);font:inherit;font-variant-numeric:tabular-nums;
+  background:rgba(var(--heat),calc(var(--h,0)*.28));color:var(--ink);cursor:pointer;display:grid;place-items:center;font-size:15px;padding:0}
+.day:hover{border-color:var(--accent)}
+.day.empty{visibility:hidden}
+.day.past{opacity:.35;cursor:not-allowed}
+.day.today{box-shadow:inset 0 0 0 1.5px var(--muted)}
+.day.sel{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.day.anchor{outline:2px dashed var(--sun);outline-offset:2px}
+.day .cnt{position:absolute;top:3px;right:5px;font-size:10px;line-height:1;font-weight:600;color:var(--accent)}
+.day.sel .cnt{color:var(--accent-ink)}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{font:inherit;font-weight:500;border-radius:10px;padding:10px 16px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.toggle[aria-pressed="true"]{background:var(--sun-soft);border-color:var(--sun)}
+.status{font-size:13px;color:var(--muted)}
+.status.err{color:var(--danger)}
+.summary{display:flex;gap:10px;flex-wrap:wrap}
+.summary b{font-family:var(--display);font-weight:500}
+.rank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.rank li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 12px;border-radius:12px;border:1px solid var(--line)}
+.rank li.top{border-color:var(--sun);background:var(--sun-soft)}
+.rank .date{font-family:var(--display);font-weight:500;white-space:nowrap}
+.rank .who{font-size:13px;color:var(--muted);min-width:0;overflow-wrap:anywhere}
+.rank .num{font-variant-numeric:tabular-nums;font-weight:600;color:var(--accent);white-space:nowrap}
+.bar{grid-column:1/-1;height:5px;border-radius:3px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent)}
+.empty-state{color:var(--muted);text-align:center;padding:18px 8px;border:1px dashed var(--line);border-radius:12px}
+.people{display:flex;flex-direction:column;gap:6px}
+.person{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:14px}
+.person .d{color:var(--muted);font-size:12px}
+.linkbtn{font:inherit;font-size:12px;background:none;border:none;color:var(--danger);cursor:pointer;padding:2px 4px}
+details summary{cursor:pointer;font-family:var(--display);font-weight:500}
+@media (prefers-reduced-motion:no-preference){.day{transition:background .15s,border-color .15s}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="pass">
+    <div>
+      <h1>🧳 นัดวันไปเที่ยว</h1>
+      <p>พิมพ์ชื่อตัวเอง เลือกวันที่ว่างบนปฏิทิน แล้วกดส่ง</p>
+    </div>
+    <div class="stub"><div class="k">ส่งแล้ว</div><div class="v" id="peopleCount">–</div><div class="k">คน</div></div>
+  </header>
+
+  <div id="notice" class="notice" hidden></div>
+
+  <div class="grid">
+    <section class="panel" aria-label="ส่งวันที่ว่าง">
+      <div class="step">
+        <h2><span class="n">1</span>ชื่อของคุณ</h2>
+        <p class="hint">พิมพ์ชื่อของคุณ หรือกดเลือกจากรายชื่อเพื่อแก้วันที่เคยส่ง</p>
+        <input type="text" id="nameInput" maxlength="40" placeholder="เช่น พีม" autocomplete="nickname">
+        <div class="chips" id="nameChips"></div>
+      </div>
+
+      <div class="step">
+        <h2><span class="n">2</span>เลือกวันที่ว่าง</h2>
+        <p class="hint">แตะวันเพื่อเลือก/ยกเลิก หรือเปิด “เลือกเป็นช่วง” แล้วแตะวันแรกกับวันสุดท้าย · ตัวเลขเล็กมุมขวาบน = จำนวนเพื่อนที่ว่างวันนั้นแล้ว</p>
+        <div class="calhead">
+          <button class="iconbtn" id="prevBtn" aria-label="เดือนก่อนหน้า">‹</button>
+          <h3 id="monthLabel"></h3>
+          <button class="iconbtn" id="nextBtn" aria-label="เดือนถัดไป">›</button>
+        </div>
+        <div class="dow"><span>อา</span><span>จ</span><span>อ</span><span>พ</span><span>พฤ</span><span>ศ</span><span>ส</span></div>
+        <div class="days" id="days"></div>
+      </div>
+
+      <div class="toolbar">
+        <button class="btn primary" id="saveBtn">ส่งวันที่ว่าง</button>
+        <button class="btn toggle" id="rangeBtn" aria-pressed="false">เลือกเป็นช่วง</button>
+        <button class="btn" id="clearBtn">ล้างวันที่เลือกทั้งหมด</button>
+      </div>
+      <div class="status" id="status" aria-live="polite">เลือกแล้ว 0 วัน</div>
+    </section>
+
+    <section class="panel" aria-label="ผลโหวต">
+      <h2 style="font-size:20px">📊 วันที่ว่างตรงกันมากที่สุด</h2>
+      <p class="hint">อัปเดตอัตโนมัติเมื่อเพื่อนส่งวันว่าง</p>
+      <div id="bestRun"></div>
+      <ol class="rank" id="rank"></ol>
+      <details id="peopleBox" hidden>
+        <summary>ใครส่งแล้วบ้าง</summary>
+        <div class="people" id="people" style="margin-top:10px"></div>
+      </details>
+    </section>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+/* ==========================================================
+   1) วาง firebaseConfig ของคุณตรงนี้ (คัดลอกจาก Firebase Console)
+   ========================================================== */
+const firebaseConfig = {
+  apiKey: "",
+  authDomain: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: ""
+};
+/* ========================================================== */
+
+(function(){
+  const $ = id => document.getElementById(id);
+  const pad = n => String(n).padStart(2,'0');
+  const key = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+  const parse = k => { const [y,m,d]=k.split('-').map(Number); return new Date(y,m-1,d); };
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todayKey = key(today);
+  const fmtShort = k => parse(k).toLocaleDateString('th-TH',{weekday:'short',day:'numeric',month:'short'});
+  const fmtMonth = (y,m) => new Date(y,m,1).toLocaleDateString('th-TH',{month:'long',year:'numeric'});
+  const idFor = name => encodeURIComponent(name.trim().toLowerCase()).slice(0,300);
+
+  let view = {y:today.getFullYear(), m:today.getMonth()};
+  let selected = new Set();
+  let savedSig = '[]';
+  let votes = [];
+  let db = null;
+  let rangeMode = false, anchor = null, saving = false;
+
+  const sig = s => JSON.stringify([...s].sort());
+  const currentName = () => $('nameInput').value.trim();
+  const myVote = () => { const n = currentName(); return n ? votes.find(v => v.id === idFor(n)) : null; };
+  const dirty = () => sig(selected) !== savedSig;
+
+  function counts(){
+    const c = new Map();
+    for (const v of votes) for (const d of v.dates) if (d >= todayKey) {
+      if (!c.has(d)) c.set(d, []);
+      c.get(d).push(v.name || 'ไม่ระบุชื่อ');
+    }
+    return c;
+  }
+
+  function renderCalendar(){
+    const c = counts();
+    let max = 0; c.forEach(a => { if (a.length > max) max = a.length; });
+    $('monthLabel').textContent = fmtMonth(view.y, view.m);
+    $('prevBtn').disabled = view.y === today.getFullYear() && view.m === today.getMonth();
+    const first = new Date(view.y, view.m, 1);
+    const n = new Date(view.y, view.m+1, 0).getDate();
+    const box = $('days'); box.textContent = '';
+    for (let i=0;i<first.getDay();i++){ const e=document.createElement('div'); e.className='day empty'; box.appendChild(e); }
+    for (let d=1; d<=n; d++){
+      const k = key(new Date(view.y, view.m, d));
+      const b = document.createElement('button');
+      b.type='button'; b.className='day'; b.dataset.k = k; b.textContent = d;
+      const names = c.get(k) || [];
+      if (k < todayKey){ b.classList.add('past'); b.disabled = true; }
+      if (k === todayKey) b.classList.add('today');
+      if (selected.has(k)) b.classList.add('sel');
+      if (anchor === k) b.classList.add('anchor');
+      if (names.length){
+        b.style.setProperty('--h', max ? names.length/max : 0);
+        const s = document.createElement('span'); s.className='cnt'; s.textContent = names.length; b.appendChild(s);
+        b.title = names.join(', ');
+      }
+      b.setAttribute('aria-pressed', selected.has(k));
+      b.setAttribute('aria-label', fmtShort(k) + (names.length ? ` · ว่าง ${names.length} คน` : ''));
+      box.appendChild(b);
+    }
+  }
+
+  function renderResults(){
+    const c = counts();
+    const total = votes.length;
+    $('peopleCount').textContent = total;
+    const entries = [...c.entries()].sort((a,b) => b[1].length - a[1].length || (a[0] < b[0] ? -1 : 1));
+    const rank = $('rank'); rank.textContent = '';
+    const best = $('bestRun'); best.textContent = '';
+    if (!entries.length){
+      const e = document.createElement('div'); e.className='empty-state';
+      e.textContent = total ? 'วันที่ส่งมาผ่านไปแล้วทั้งหมด ลองเลือกวันใหม่' : 'ยังไม่มีใครส่งวันว่าง เป็นคนแรกเลย: ใส่ชื่อ เลือกวัน แล้วกด “ส่งวันที่ว่าง”';
+      rank.appendChild(e);
+    } else {
+      const max = entries[0][1].length;
+      const tops = entries.filter(e => e[1].length === max).map(e => e[0]).sort();
+      let runs = [], cur = [tops[0]];
+      for (let i=1;i<tops.length;i++){
+        const prev = parse(tops[i-1]); prev.setDate(prev.getDate()+1);
+        if (key(prev) === tops[i]) cur.push(tops[i]); else { runs.push(cur); cur=[tops[i]]; }
+      }
+      runs.push(cur);
+      runs.sort((a,b) => b.length - a.length);
+      const r = runs[0];
+      const card = document.createElement('div'); card.className='notice'; card.style.color='var(--ink)';
+      const label = r.length > 1 ? `${fmtShort(r[0])} – ${fmtShort(r[r.length-1])} (${r.length} วันติด)` : fmtShort(r[0]);
+      const strong = document.createElement('b'); strong.textContent = label;
+      card.append('ช่วงที่ดีที่สุดตอนนี้: ', strong, ` · ว่าง ${max} จาก ${total} คน` + (max === total && total > 1 ? ' ✓ ทุกคนว่าง' : ''));
+      best.appendChild(card);
+      entries.slice(0,10).forEach(([k, names]) => {
+        const li = document.createElement('li');
+        if (names.length === max) li.className = 'top';
+        const d = document.createElement('span'); d.className='date'; d.textContent = fmtShort(k);
+        const w = document.createElement('span'); w.className='who'; w.textContent = names.join(', ');
+        const nm = document.createElement('span'); nm.className='num'; nm.textContent = `${names.length}/${total}`;
+        const bar = document.createElement('div'); bar.className='bar';
+        const fill = document.createElement('i'); fill.style.width = (names.length/total*100)+'%'; bar.appendChild(fill);
+        li.append(d,w,nm,bar); rank.appendChild(li);
+      });
+    }
+    const mine = myVote();
+    const chips = $('nameChips'); chips.textContent = '';
+    votes.forEach(v => {
+      const b = document.createElement('button'); b.type='button';
+      b.className = 'chip' + (mine && v.id === mine.id ? ' me' : '');
+      b.textContent = v.name || 'ไม่ระบุชื่อ';
+      b.onclick = () => { $('nameInput').value = v.name; loadMine(); };
+      chips.appendChild(b);
+    });
+    const pb = $('peopleBox'); pb.hidden = !votes.length;
+    const pl = $('people'); pl.textContent='';
+    votes.forEach(v => {
+      const row=document.createElement('div'); row.className='person';
+      const left=document.createElement('div');
+      const nm=document.createElement('div'); nm.textContent=v.name||'ไม่ระบุชื่อ';
+      const dd=document.createElement('div'); dd.className='d'; dd.textContent=`ว่าง ${v.dates.filter(d=>d>=todayKey).length} วัน`;
+      left.append(nm,dd); row.appendChild(left); pl.appendChild(row);
+    });
+  }
+
+  function renderStatus(msg, err){
+    const s = $('status'); s.className = 'status' + (err ? ' err' : '');
+    if (msg){ s.textContent = msg; return; }
+    const n = [...selected].filter(d => d >= todayKey).length;
+    s.textContent = `เลือกแล้ว ${n} วัน` + (dirty() && myVote() ? ' · มีการแก้ไขที่ยังไม่ได้ส่ง' : '') + (rangeMode ? (anchor ? ' · แตะวันสุดท้ายของช่วง' : ' · แตะวันแรกของช่วง') : '');
+  }
+  function updateButtons(){
+    $('saveBtn').disabled = !db || saving || !currentName();
+    $('saveBtn').textContent = saving ? 'กำลังส่ง…' : (myVote() ? 'อัปเดตวันที่ว่าง' : 'ส่งวันที่ว่าง');
+  }
+  function renderAll(){ renderCalendar(); renderResults(); renderStatus(); updateButtons(); }
+
+  // Load the dates saved under the typed name, so a person can edit them
+  function loadMine(){
+    const mine = myVote();
+    if (mine){ selected = new Set(mine.dates.filter(d => d >= todayKey)); savedSig = sig(selected); }
+    else { savedSig = '[]'; }
+    anchor = null; renderAll();
+  }
+
+  $('days').addEventListener('click', e => {
+    const b = e.target.closest('.day'); if (!b || b.disabled || !b.dataset.k) return;
+    const k = b.dataset.k;
+    if (rangeMode){
+      if (!anchor){ anchor = k; }
+      else {
+        const [a,z] = anchor < k ? [anchor,k] : [k,anchor];
+        const d = parse(a), end = parse(z);
+        const adding = !selected.has(k) || !selected.has(anchor);
+        while (d <= end){ const kk = key(d); if (kk >= todayKey){ adding ? selected.add(kk) : selected.delete(kk); } d.setDate(d.getDate()+1); }
+        anchor = null;
+      }
+    } else { selected.has(k) ? selected.delete(k) : selected.add(k); }
+    renderCalendar(); renderStatus();
+  });
+  $('prevBtn').onclick = () => { view.m--; if (view.m<0){view.m=11;view.y--;} renderCalendar(); };
+  $('nextBtn').onclick = () => { view.m++; if (view.m>11){view.m=0;view.y++;} renderCalendar(); };
+  $('rangeBtn').onclick = () => { rangeMode = !rangeMode; anchor = null; $('rangeBtn').setAttribute('aria-pressed', rangeMode); renderCalendar(); renderStatus(); };
+  $('clearBtn').onclick = () => { selected.clear(); anchor = null; renderCalendar(); renderStatus(); };
+  let nameTimer;
+  $('nameInput').addEventListener('input', () => {
+    updateButtons(); renderStatus();
+    clearTimeout(nameTimer);
+    nameTimer = setTimeout(() => { if (myVote() && !dirty()) loadMine(); else renderResults(); }, 400);
+  });
+  try{ const last = localStorage.getItem('tripPollName'); if (last) $('nameInput').value = last; }catch(e){}
+
+  $('saveBtn').onclick = async () => {
+    const name = currentName();
+    if (!name){ renderStatus('ใส่ชื่อก่อนส่ง', true); $('nameInput').focus(); return; }
+    saving = true; updateButtons();
+    const dates = [...selected].filter(d => d >= todayKey).sort();
+    try{
+      await db.collection('votes').doc(idFor(name)).set({name: name.slice(0,40), dates, updatedAt: new Date().toISOString()});
+      try{ localStorage.setItem('tripPollName', name); }catch(e){}
+      savedSig = sig(new Set(dates));
+      saving = false; updateButtons(); renderStatus(`ส่งแล้ว ✓ ${dates.length} วัน`);
+    }catch(e){
+      console.error(e); saving = false; updateButtons();
+      renderStatus('ส่งไม่สำเร็จ ตรวจอินเทอร์เน็ตหรือ Rules ของ Firestore แล้วลองอีกครั้ง', true);
+    }
+  };
+
+  function showNotice(text){ const n=$('notice'); n.hidden=false; n.className='notice warn'; n.textContent=text; }
+
+  renderAll();
+  if (!firebaseConfig.projectId){
+    showNotice('ยังไม่ได้ตั้งค่า Firebase: เปิดไฟล์ index.html แล้ววาง firebaseConfig ของคุณที่ด้านล่างไฟล์');
+    return;
+  }
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+  updateButtons();
+  let first = true;
+  db.collection('votes').onSnapshot(snap => {
+    votes = snap.docs.map(d => { const x = d.data() || {}; return {id:d.id, name:String(x.name||'').slice(0,40), dates:Array.isArray(x.dates) ? x.dates.filter(s => typeof s==='string' && /^\d{4}-\d{2}-\d{2}$/.test(s)) : []}; })
+      .sort((a,b) => a.name.localeCompare(b.name,'th'));
+    if (first){ first = false; loadMine(); } else renderAll();
+  }, err => { console.error(err); showNotice('โหลดข้อมูลไม่ได้ ตรวจ Rules ของ Firestore ว่าอนุญาตให้อ่าน collection votes'); });
+})();
+</script>
+</body>
+</html>
